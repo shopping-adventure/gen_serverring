@@ -59,12 +59,19 @@ defmodule GenServerring do
     end
   end
 
-#  def reply do
-#  end
+  def reply(client, term) do
+    send(client, term)
+    :ok
+  end
 
   # cluster_management
-#  def stop do # we have to stop all nodes
-#  end
+  # we have to stop all nodes
+  def stop({name, n} = server, reason \\ :normal, timeout \\ :infinity) do
+    {:ok, ring} = get_ring(server)
+    others = ring.up_set |> MapSet.delete(n)
+    Enum.each(others, fn(n) -> GenServer.stop({name, n}, reason, timeout) end)
+    Genserver.stop(server, reason, timeout)
+  end
 
   def add_node(server, node) when is_binary(node) do
     add_node(server, :"#{node}")
