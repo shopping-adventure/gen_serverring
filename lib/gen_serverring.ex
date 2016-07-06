@@ -4,7 +4,9 @@ defmodule GenServerring do
 
   defstruct node_set: Crdtex.Set.new, up_set: MapSet.new, payload: nil, counter: 0, callback: nil
 
-  def start_link(__MODULE__, {name, callback}, []) do
+  defmacro __using__(_), do: []
+
+  def start_link({name, callback}) do
     {:ok, payload} = callback.init([])
     GenServer.start_link(__MODULE__, {payload, callback}, [{:name, name}])
   end
@@ -23,46 +25,12 @@ defmodule GenServerring do
     end
   end
 
-  # payload management, mimicking a GenServer by using directly the callback
-  def call(server, action) do
-    case get_ring(server) do
-      {:ok, ring} -> do_call(ring, action)
-    end
-  end
+  # payload management, mimicking a GenServer
+  def call(server, action), do: GenServer.call(server, action)
 
-  defp do_call(ring, action) do
-    payload = ring.payload
-    up_load = fn(load) -> update_payload(ring, load) end
-    case ring.callback.handle_call(action, self(), payload) do
-      {:reply, reply, new} -> {:reply, reply, up_load.(new)}
-      {:reply, reply, new, timeout} -> {:reply, reply, up_load.(new), timeout}
-      {:noreply, new} -> {:noreply, up_load.(new)}
-      {:noreply, new, timeout} -> {:noreply, up_load.(new), timeout}
-      {:stop, reason, reply, new} -> {:stop, reason, reply, up_load.(new)}
-      {:stop, reason, new} -> {:stop, reason, up_load.(new)}
-    end
-  end
+  def cast(server, action), do: GenServer.cast(server, action)
 
-  def cast(server, action) do
-    case get_ring(server) do
-      {:ok, ring} -> do_cast(ring, action)
-    end
-  end
-  
-  defp do_cast(ring, action) do
-    payload = ring.payload
-    up_load = fn(load) -> update_payload(ring, load) end
-    case ring.callback.handle_cast(action, payload) do
-      {:noreply, new} -> {:noreply, up_load.(new)}
-      {:noreply, new, timeout} -> {:noreply, up_load.(new), timeout}
-      {:stop, reason, new} -> {:stop, reason, up_load.(new)}
-    end
-  end
-
-  def reply(client, term) do
-    send(client, term)
-    :ok
-  end
+  def reply(client, term), do: GenServer.reply(server, term)
 
   # cluster_management
   # we have to stop all nodes
@@ -101,9 +69,18 @@ defmodule GenServerring do
     {:reply, {:ok, ring}, ring}
   end
   def handle_call(other, from, ring) do
-    ring.callback.handle_call(other, from, ring.payload)
+    payload = ring.payload
+    up_load = fn(load) -> update_payload(ring, load) end
+    case ring.callback.handle_call(other, from, payload) do
+      {:reply, reply, new} -> {:reply, reply, up_load.(new)}
+      {:reply, reply, new, timeout} -> {:reply, reply, up_load.(new), timeout}
+      {:noreply, new} -> {:noreply, up_load.(new)}
+      {:noreply, new, timeout} -> {:noreply, up_load.(new), timeout}
+      {:stop, reason, reply, new} -> {:stop, reason, reply, up_load.(new)}
+      {:stop, reason, new} -> {:stop, reason, up_load.(new)}
+    end
   end
-  
+
   def handle_cast({:reconcile, gossip}, ring) do
     case gossip.from_node do
       [] -> :nothingtodo
@@ -143,7 +120,13 @@ defmodule GenServerring do
     end
   end
   def handle_cast(other, ring) do
-    ring.callback.handle_cast(other, ring.payload)
+    payload = ring.payload
+    up_load = fn(load) -> update_payload(ring, load) end
+    case ring.callback.handle_cast(other, payload) do
+      {:noreply, new} -> {:noreply, up_load.(new)}
+      {:noreply, new, timeout} -> {:noreply, up_load.(new), timeout}
+      {:stop, reason, new} -> {:stop, reason, up_load.(new)}
+    end
   end
 
   def handle_info(:send_gossip, %GenServerring{node_set: node_set} = ring) do
@@ -154,9 +137,10 @@ defmodule GenServerring do
     case ring.up_set |> MapSet.delete(node()) |> MapSet.to_list do
       [] -> {:noreply,ring}
       active_nodes ->
+        {:registered_name, name} = Process.info(self(), :registered_name)
         random_node =
           Enum.at(active_nodes, :random.uniform(length(active_nodes)) - 1)
-        :gen_server.cast({__MODULE__, random_node},
+        GenServer.cast({name, random_node},
           {:reconcile, %{node_set: node_set, payload: ring.payload, from_node: [node()]}})
       {:noreply, ring}
     end
@@ -168,7 +152,15 @@ defmodule GenServerring do
 	  # TODO: preserve counter
     File.rm(ring_path)
     :init.stop()
-    {:noreply,s}
+    {:noreply, s}
+  end
+  def handle_info(other, ring) do
+    up_load = fn(load) -> update_payload(ring, load) end
+    case ring.callback.handle_info(other, ring.payload) do
+      {:noreply, new} -> {:noreply, up_load.(new)}
+      {:noreply, new, timeout} -> {:noreply, up_load.(new), timeout}
+      {:stop, reason, new} -> {:stop, reason, up_load.(new)}
+    end
   end
 
   # small utilities functions
@@ -197,10 +189,12 @@ defmodule GenServerring do
     up_set = notify_up_set(get_set(ring.node_set), get_set(merged_node_set),
     MapSet.to_list(ring.up_set) ++ changes.from_node)
     notify_node_set(ring.node_set, merged_node_set, changes.node_set)
-    notify_payload(value(ring.payload), value(changes.payload), changes)
 
-    gen_ring(merged_node_set, up_set, merged_payload, updated_counter,
-      ring.callback)
+    ring =
+      gen_ring(merged_node_set, up_set, merged_payload, updated_counter,
+        ring.callback)
+    notify_payload(value(ring.payload), value(changes.payload), ring)
+    ring
   end
 
   defp update_counter(merged_node_set, merged_payload, old_ring) do
@@ -255,5 +249,27 @@ defmodule GenServerring do
   defp merge(nil, crdt), do: crdt
   defp merge(crdt, crdt), do: crdt
   defp merge(crdt1, crdt2), do: Crdtex.merge(crdt1, crdt2)
+end
 
+defmodule GenServerring.App do
+  use Application
+
+  def start(type, []) do
+    name = Application.get_env(:gen_serverring, :name, :demo_ring)
+    callback = Application.get_env(:gen_serverring, :callback, Demo)
+    start(type, [{name, callback}])
+  end
+  def start(_type, args) do
+    Supervisor.start_link(GenServerring.App.Sup, args)
+  end
+
+  defmodule Sup do
+    use Supervisor
+    def init(arg) do
+      children =
+        [worker(:gen_event, [{:local, GenServerring.Events}], id: GenServerring.Events),
+         worker(GenServerring, arg)]
+      supervise(children, strategy: :one_for_one)
+    end
+  end
 end
