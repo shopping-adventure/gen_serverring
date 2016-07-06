@@ -12,9 +12,9 @@ defmodule GenServerring do
   end
 
   def init({payload, callback}) do
-    :erlang.send_after(1000,self(),:send_gossip)
+    :erlang.send_after(1_000, self(), :send_gossip)
     case File.read(ring_path) do
-      {:ok,bin} ->
+      {:ok, bin} ->
         set = :erlang.binary_to_term(bin)
         monitor(get_set(set))
         {:ok, gen_ring(set, MapSet.new(get_set(set)), payload, 0, callback)}
@@ -106,10 +106,10 @@ defmodule GenServerring do
            %{node_set: new_node_set, payload: ring.payload, from_node: []})}
     end
   end
-  def handle_cast({:del_node,n}, ring) do
+  def handle_cast({:del_node, n}, ring) do
     case contain?(ring.node_set, n) do
       false ->
-        {:noreply,ring}
+        {:noreply, ring}
       true ->
         new_up_set = MapSet.delete(ring.up_set, n)
         {:ok, new_node_set} =
@@ -130,12 +130,12 @@ defmodule GenServerring do
   end
 
   def handle_info(:send_gossip, %GenServerring{node_set: node_set} = ring) do
-    :erlang.send_after(1000,self(),:send_gossip)
+    :erlang.send_after(1_000, self(), :send_gossip)
     if not contain?(node_set, node()) do
-      :erlang.send_after(5000, self(), :halt_node)
+      :erlang.send_after(5_000, self(), :halt_node)
     end
     case ring.up_set |> MapSet.delete(node()) |> MapSet.to_list do
-      [] -> {:noreply,ring}
+      [] -> {:noreply, ring}
       active_nodes ->
         {:registered_name, name} = Process.info(self(), :registered_name)
         random_node =
