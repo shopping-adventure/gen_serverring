@@ -55,19 +55,15 @@ defmodule GenServerring do
     GenServer.cast(server, {:del_node, node})
   end
 
-  def all(server) , do: GenServer.call(server, :get_all)
+  def all(server), do: GenServer.call(server, :get_all)
   def up(server), do: GenServer.call(server, :get_up)
 
   # classic GenServer callbacks
-  def handle_call(:get_all, _, ring) do
-    {:reply, get_set(ring.node_set), ring}
-  end
+  def handle_call(:get_all, _, ring), do: {:reply, get_set(ring.node_set), ring}
   def handle_call(:get_up, _, ring) do
     {:reply, MapSet.to_list(ring.up_set), ring}
   end
-  def handle_call(:get_ring, _, ring) do
-    {:reply, {:ok, ring}, ring}
-  end
+  def handle_call(:get_ring, _, ring), do: {:reply, {:ok, ring}, ring}
   def handle_call(other, from, ring) do
     payload = ring.payload
     up_load = fn(load) -> update_payload(ring, load) end
@@ -205,9 +201,7 @@ defmodule GenServerring do
     end
   end
 
-  defp notify_up_set(set, set, old_up) do
-    MapSet.new(old_up)
-  end
+  defp notify_up_set(set, set, old_up), do: MapSet.new(old_up)
   defp notify_up_set(old_set, merged_set, old_up) do
     new_up = MapSet.difference(MapSet.new(merged_set), MapSet.new(old_set))
     Enum.each(new_up, fn(n) -> Node.monitor(n, :true) end)
@@ -216,17 +210,13 @@ defmodule GenServerring do
     MapSet.new(new_set)
   end
 
-  defp notify_node_set(set, set, _) do
-    :nothingtodo
-  end
+  defp notify_node_set(set, set, _), do: :nothingtodo
   defp notify_node_set(old_set, _, new_set) do
     GenEvent.notify(GenServerring.Events, {:new_node_set, get_set(old_set), get_set(new_set)})
       File.write!(ring_path, new_set |> :erlang.term_to_binary)
   end
 
-  defp notify_payload(payload, payload, _) do
-    :nothingtodo
-  end
+  defp notify_payload(payload, payload, _), do: :nothingtodo
   defp notify_payload(_, _, ring) do
     ring.callback.handle_change(ring.payload)
   end
@@ -272,3 +262,4 @@ defmodule GenServerring.App do
     end
   end
 end
+
