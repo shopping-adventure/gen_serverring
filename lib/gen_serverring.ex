@@ -30,7 +30,7 @@ defmodule GenServerring do
 
   def cast(server, action), do: GenServer.cast(server, action)
 
-  def reply(client, term), do: GenServer.reply(server, term)
+  def reply(client, term), do: GenServer.reply(client, term)
 
   # cluster_management
   # we have to stop all nodes
@@ -149,7 +149,6 @@ defmodule GenServerring do
     {:noreply, %{ring | up_set: MapSet.delete(up_set, n)}}
   end
   def handle_info(:halt_node, s) do
-	  # TODO: preserve counter
     File.rm(ring_path)
     :init.stop()
     {:noreply, s}
