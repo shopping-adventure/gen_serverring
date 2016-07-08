@@ -11,7 +11,7 @@ defmodule Demo do
 
   # almost like using a GenServer :)
   # note that for the moment GenServerring.stop is not calling
-  # callback.terminate :-(
+  # callback.terminate
   def init([]), do: {:ok, Crdtex.Counter.new}
 
   def handle_call(:get, _, counter), do: {:reply, Crdtex.value(counter), counter}
@@ -32,11 +32,24 @@ defmodule Demo do
 
   # specific to GenServerring and mandatory
   # useful only for side effects (such as persisting the payload)  as it does
-  # allow the payload to be changed (at least not for time being).
-  def handle_change(_) do
-    :nothingtodo
+  # not allow the payload to be changed (at least not for time being).
+  # As it is triggered by a handle_cast which is itself triggered by a
+  # handle_info, it could make sense to let it modify the payload by returning
+  # {:noreply, new_payload} | {:noreply, new_payload, :hibernate} |
+  # {:no_reply, new_payload, timeout} | {:stop, reason, new_payload}
+  def handle_state_change(state) do
+    IO.puts("new state #{Crdtex.value(state)}")
+    #:nothingtodo
   end
 
   # {:erlang.monotic_time(), :erlang.unique_integer([:monotonic]} might be needed
-  defp dot(), do: :erlang.unique_integer([:monotonic, :positive])
+  defp dot() do
+    try do
+      :erlang.unique_integer([:monotonic, :positive]) # erlang 18 and up
+    rescue
+      _ ->
+        {mega, second, micro} = :erlang.now()
+        (mega * 1_000_000 + second) * 1_000_000 + micro
+    end
+  end
 end

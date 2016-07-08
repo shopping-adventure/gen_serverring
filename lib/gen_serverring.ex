@@ -91,7 +91,7 @@ defmodule GenServerring do
     {ring, payload} = update_ring(ring, gossip)
     case payload do
       :no_payload_change -> :nothingtodo
-      _ -> ring.callback.handle_change(payload)
+      _ -> ring.callback.handle_state_change(payload)
     end
     {:noreply, ring}
   end

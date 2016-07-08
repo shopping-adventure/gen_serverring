@@ -35,10 +35,13 @@ defmodule GenServerringCounterTest do
     {:noreply, counter}
   end
 
-  def handle_change(counter) do
-    send(:tester_handle_change, {:payload_changed, Crdtex.value(counter)})
+  def handle_state_change(counter) do
+    send(:tester_handle_state_change, {:state_changed, Crdtex.value(counter)})
   end
 
+  def handle_ring_change(up_set) do
+    send(:tester_handle_ring_change, {:ring_changed, up_set})
+  end
 
   # counter on one node only, this is just checking that the interaction between
   # the callback and GenServerring is working as expected.
@@ -63,9 +66,9 @@ defmodule GenServerringCounterTest do
     true = Process.unregister(:tester_handle_info)
   end
 
-  test "counter on one node, handle_change" do
-    # testing handle_change with only one node, I have to cheat...
-    # handle_change is trigerred if the payload change during a reconcile,
+  test "counter on one node, handle_state_change" do
+    # testing handle_state_change with only one node, I have to cheat...
+    # handle_state_change is trigerred if the payload change during a reconcile,
     # let's simulate that
     name = :gen_serverring_counter_test
     setup_env(name)
@@ -75,11 +78,11 @@ defmodule GenServerringCounterTest do
     # ring and the state of the GenServerring are identical, let's modify ring
     counter = update_state(counter, :increment)
     gossip = %{node_set: ring.node_set, payload: counter, from_node: []}
-    true = Process.register(self(), :tester_handle_change)
+    true = Process.register(self(), :tester_handle_state_change)
     GenServerring.cast(name, {:reconcile, gossip})
 
-    assert_receive({:payload_changed, 1})
-    true = Process.unregister(:tester_handle_change)
+    assert_receive({:state_changed, 1})
+    true = Process.unregister(:tester_handle_state_change)
   end
 
 end
