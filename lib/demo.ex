@@ -3,8 +3,6 @@ defmodule Demo do
   require Crdtex
   require Crdtex.Counter
 
-  def init([]), do: {:ok, Crdtex.Counter.new}
-
   def inc(server \\ :demo_ring), do: GenServerring.cast(server, :inc)
 
   def dec(server \\ :demo_ring), do: GenServerring.cast(server, :dec)
@@ -14,6 +12,7 @@ defmodule Demo do
   # almost like using a GenServer :)
   # note that for the moment GenServerring.stop is not calling
   # callback.terminate :-(
+  def init([]), do: {:ok, Crdtex.Counter.new}
 
   def handle_call(:get, _, counter), do: {:reply, Crdtex.value(counter), counter}
 
