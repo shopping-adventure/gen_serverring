@@ -36,11 +36,7 @@ defmodule GenServerringCounterTest do
   end
 
   def handle_change(counter) do
-    case Enum.member?(Process.registered(), :tester_handle_change) do
-      true ->
-        send(:tester_handle_change, {:payload_changed, Crdtex.value(counter)})
-      _ -> :ok
-    end
+    send(:tester_handle_change, {:payload_changed, Crdtex.value(counter)})
   end
 
 

@@ -88,7 +88,12 @@ defmodule GenServerring do
             Node.monitor(n, true)
         end
     end
-    {:noreply, update_ring(ring, gossip)}
+    {ring, payload} = update_ring(ring, gossip)
+    case payload do
+      :no_payload_change -> :nothingtodo
+      _ -> ring.callback.handle_change(payload)
+    end
+    {:noreply, ring}
   end
   def handle_cast({:add_node, n}, ring) do
     case contain?(ring.node_set, n) do
@@ -97,9 +102,10 @@ defmodule GenServerring do
       false ->
         new_up_set = MapSet.put(ring.up_set, n)
         {:ok, new_node_set} = add(ring.node_set, {node(), ring.counter + 1}, n)
-        {:noreply,
-         update_ring(%GenServerring{ring | up_set: new_up_set},
-           %{node_set: new_node_set, payload: ring.payload, from_node: []})}
+        {ring, _} =
+          update_ring(%GenServerring{ring | up_set: new_up_set},
+           %{node_set: new_node_set, payload: ring.payload, from_node: []})
+        {:noreply, ring}
     end
   end
   def handle_cast({:del_node, n}, ring) do
@@ -108,11 +114,11 @@ defmodule GenServerring do
         {:noreply, ring}
       true ->
         new_up_set = MapSet.delete(ring.up_set, n)
-        {:ok, new_node_set} =
-          delete(ring.node_set, {node(), ring.counter + 1}, n)
-        {:noreply,
+        {:ok,new_node_set} = delete(ring.node_set,{node(),ring.counter + 1},n)
+        {ring, _} =
          update_ring(%GenServerring{ring | up_set: new_up_set},
-           %{node_set: new_node_set, payload: ring.payload, from_node: []})}
+           %{node_set: new_node_set, payload: ring.payload, from_node: []})
+        {:noreply, ring}
     end
   end
   def handle_cast(other, ring) do
@@ -172,8 +178,10 @@ defmodule GenServerring do
   defp get_ring(server), do: GenServer.call(server, :get_ring)
 
   defp update_payload(ring, payload) do
-    update_ring(ring,
-      %{node_set: ring.node_set, payload: payload, from_node: []})
+    {ring, _} =
+      update_ring(ring,
+        %{node_set: ring.node_set, payload: payload, from_node: []})
+    ring
   end
 
   defp update_ring(ring, changes) do
@@ -185,11 +193,11 @@ defmodule GenServerring do
     MapSet.to_list(ring.up_set) ++ changes.from_node)
     notify_node_set(ring.node_set, merged_node_set, changes.node_set)
 
+    old_payload = ring.payload
     ring =
       gen_ring(merged_node_set, up_set, merged_payload, updated_counter,
         ring.callback)
-    notify_payload(value(ring.payload), value(changes.payload), ring)
-    ring
+    {ring, notify_payload(value(old_payload), value(changes.payload), ring)}
   end
 
   defp update_counter(merged_node_set, merged_payload, old_ring) do
@@ -216,10 +224,8 @@ defmodule GenServerring do
       File.write!(ring_path, new_set |> :erlang.term_to_binary)
   end
 
-  defp notify_payload(payload, payload, _), do: :nothingtodo
-  defp notify_payload(_, _, ring) do
-    ring.callback.handle_change(ring.payload)
-  end
+  defp notify_payload(payload, payload, _), do: :no_payload_change
+  defp notify_payload(_, _, ring), do: ring.payload
 
   defp ring_path do
     "#{Application.get_env(:gen_serverring, :data_dir, "./data")}/ring"
