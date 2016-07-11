@@ -2,7 +2,13 @@ defmodule GenServerring do
   use GenServer
   require Crdtex.Set
 
-  defstruct node_set: Crdtex.Set.new, up_set: MapSet.new, payload: nil, counter: 0, callback: nil
+  defstruct(
+    node_set: Crdtex.Set.new,
+    up_set: MapSet.new,
+    forced_down: Crdtex.Set.new,
+    payload: nil,
+    counter: 0,
+    callback: nil)
 
   defmacro __using__(_), do: []
 
@@ -56,15 +62,46 @@ defmodule GenServerring do
     GenServer.cast(server, {:del_node, node})
   end
 
+  # put the specified node in a specific kind of state: it can't be used by the
+  # cluster, so it will not received gossip and gossip received from it
+  # will be silently ignored ignored but the node can still be up and will
+  # continue to be monitored as long as needed. Even if a node get down, it will
+  # be removed from up_set but kept in the forced_down state until explicitly
+  # removed from there.
+  def force_down(server, n), do:  GenServer.call(server, {:forced_down, n})
+
+  # remove a node of the forced_down state
+  def unforce_down(server, n), do:  GenServer.call(server, {:unforced_down, n})
+
   def all(server), do: GenServer.call(server, :get_all)
   def up(server), do: GenServer.call(server, :get_up)
 
   # classic GenServer callbacks
   def handle_call(:get_all, _, ring), do: {:reply, get_set(ring.node_set), ring}
   def handle_call(:get_up, _, ring) do
-    {:reply, MapSet.to_list(ring.up_set), ring}
+    {:reply, MapSet.to_list(up_nodes(ring)), ring}
   end
   def handle_call(:get_ring, _, ring), do: {:reply, {:ok, ring}, ring}
+  def handle_call({:forced_down, n}, _, ring) do
+    counter = ring.counter + 1
+    {:ok, forced_down} = add(ring.forced_down, {node(), counter}, n)
+    {:reply, get_set(forced_down),
+      %{ring | forced_down: forced_down, counter: counter}}
+  end
+  def handle_call({:unforced_down, n}, _, ring) do
+    counter = ring.counter + 1
+    {:ok, forced_down} = delete(ring.forced_down, {node(), counter}, n)
+    up_set = ring.up_set
+    up_set =
+      case MapSet.member(up_set, n) do
+        true -> up_set
+        false ->
+          Node.monitor(n, true)
+          MapSet.put(up_set, n)
+      end
+    {:reply, MapSet.to_list(forced_down),
+      %{ring | forced_down: forced_down, up_set: up_set, counter: counter}}
+  end
   def handle_call(other, from, ring) do
     payload = ring.payload
     up_load = fn(load) -> update_payload(ring, load) end
@@ -83,8 +120,8 @@ defmodule GenServerring do
       [] -> :nothingtodo
       [n] ->
         case MapSet.member?(ring.up_set, n) do
-          false -> :nothingtodo
-          true ->
+          true -> :nothingtodo
+          false ->
             # TODO add this info in the gossip to speedup the convergence of UPs
             Node.monitor(n, true)
         end
@@ -115,7 +152,8 @@ defmodule GenServerring do
         {:noreply, ring}
       true ->
         new_up_set = MapSet.delete(ring.up_set, n)
-        {:ok,new_node_set} = delete(ring.node_set,{node(),ring.counter + 1},n)
+        {:ok, new_node_set} =
+          delete(ring.node_set, {node(), ring.counter + 1}, n)
         {ring, _} =
          update_ring(%GenServerring{ring | up_set: new_up_set},
            %{node_set: new_node_set, payload: ring.payload, from_node: []})
@@ -137,14 +175,19 @@ defmodule GenServerring do
     if not contain?(node_set, node()) do
       :erlang.send_after(5_000, self(), :halt_node)
     end
-    case ring.up_set |> MapSet.delete(node()) |> MapSet.to_list do
+    case up_nodes(ring) |> MapSet.delete(node()) |> MapSet.to_list do
       [] -> {:noreply, ring}
       active_nodes ->
         {:registered_name, name} = Process.info(self(), :registered_name)
         random_node =
           Enum.at(active_nodes, :random.uniform(length(active_nodes)) - 1)
-        GenServer.cast({name, random_node},
-          {:reconcile, %{node_set: node_set, payload: ring.payload, from_node: [node()]}})
+        GenServer.cast(
+          {name, random_node},
+          {:reconcile,
+            %{node_set: node_set,
+              forced_down: ring.forced_down,
+              payload: ring.payload,
+              from_node: [node()]}})
       {:noreply, ring}
     end
   end
@@ -180,11 +223,18 @@ defmodule GenServerring do
   end
 
   defp gen_ring(set, up, payload, counter, callback) do
-    %GenServerring{node_set: set, up_set: up, payload: payload,
-      counter: counter, callback: callback}
+    gen_ring(set, up, payload, counter, callback, Crdtex.Set.new)
+  end
+  defp gen_ring(set, up, payload, counter, callback, forced_down) do
+    %GenServerring{node_set: set, up_set: up, forced_down: forced_down,
+      payload: payload, counter: counter, callback: callback}
   end
 
   defp get_ring(server), do: GenServer.call(server, :get_ring)
+
+  defp up_nodes(ring) do
+    MapSet.difference(ring.up_set, MapSet.new(get_set(ring.forced_down)))
+  end
 
   defp update_payload(ring, payload) do
     {ring, _} =
@@ -196,6 +246,7 @@ defmodule GenServerring do
   defp update_ring(ring, changes) do
     merged_node_set = merge(ring.node_set, changes.node_set)
     merged_payload = merge(ring.payload, changes.payload)
+    merged_forced_down = merge(ring.forced_down, changes.forced_down)
     updated_counter = update_counter(merged_node_set, merged_payload, ring)
 
     up_set =
@@ -206,7 +257,7 @@ defmodule GenServerring do
     old_payload = ring.payload
     ring =
       gen_ring(merged_node_set, up_set, merged_payload, updated_counter,
-        ring.callback)
+        ring.callback, merged_forced_down)
     {ring, notify_payload(value(old_payload), value(changes.payload), ring)}
   end
 
