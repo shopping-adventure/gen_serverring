@@ -37,10 +37,9 @@ defmodule Demo do
   # handle_info, it could make sense to let it modify the payload by returning
   # {:noreply, new_payload} | {:noreply, new_payload, :hibernate} |
   # {:no_reply, new_payload, timeout} | {:stop, reason, new_payload}
-  def handle_state_change(state) do
-    IO.puts("new state #{Crdtex.value(state)}")
-    #:nothingtodo
-  end
+  def handle_state_change(state), do: IO.puts("new state #{Crdtex.value(state)}")
+
+  def handle_ring_change(nodes), do: IO.inspect(nodes)
 
   # {:erlang.monotic_time(), :erlang.unique_integer([:monotonic]} might be needed
   defp dot() do

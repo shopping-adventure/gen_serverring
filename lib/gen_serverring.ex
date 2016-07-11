@@ -17,6 +17,7 @@ defmodule GenServerring do
       {:ok, bin} ->
         set = :erlang.binary_to_term(bin)
         monitor(get_set(set))
+        # should we call callback.handle_ring_change in such a situation ?
         {:ok, gen_ring(set, MapSet.new(get_set(set)), payload, 0, callback)}
       _ ->
         set = Crdtex.Set.new
@@ -148,7 +149,15 @@ defmodule GenServerring do
     end
   end
   def handle_info({:nodedown, n}, %GenServerring{up_set: up_set} = ring) do
-    {:noreply, %{ring | up_set: MapSet.delete(up_set, n)}}
+    new_up_set =
+      case MapSet.member(up_set, n) do
+        true ->
+          set = MapSet.delete(up_set, n)
+          ring.callback.handle_ring_change(MapSet.to_list(set))
+          set
+        false -> up_set
+      end
+    {:noreply, %{ring | up_set: new_up_set}}
   end
   def handle_info(:halt_node, s) do
     File.rm(ring_path)
@@ -189,8 +198,9 @@ defmodule GenServerring do
     merged_payload = merge(ring.payload, changes.payload)
     updated_counter = update_counter(merged_node_set, merged_payload, ring)
 
-    up_set = notify_up_set(get_set(ring.node_set), get_set(merged_node_set),
-    MapSet.to_list(ring.up_set) ++ changes.from_node)
+    up_set =
+      notify_up_set(get_set(ring.node_set), get_set(merged_node_set),
+        MapSet.to_list(ring.up_set) ++ changes.from_node, ring.callback)
     notify_node_set(ring.node_set, merged_node_set, changes.node_set)
 
     old_payload = ring.payload
@@ -209,12 +219,13 @@ defmodule GenServerring do
     end
   end
 
-  defp notify_up_set(set, set, old_up), do: MapSet.new(old_up)
-  defp notify_up_set(old_set, merged_set, old_up) do
+  defp notify_up_set(set, set, old_up, _), do: MapSet.new(old_up)
+  defp notify_up_set(old_set, merged_set, old_up, callback) do
     new_up = MapSet.difference(MapSet.new(merged_set), MapSet.new(old_set))
     Enum.each(new_up, fn(n) -> Node.monitor(n, :true) end)
     new_set = old_up ++ MapSet.to_list(new_up)
     GenEvent.notify(GenServerring.Events, {:new_up_set, old_up, new_set})
+    callback.handle_ring_set(new_set)
     MapSet.new(new_set)
   end
 
