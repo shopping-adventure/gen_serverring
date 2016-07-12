@@ -62,12 +62,9 @@ defmodule GenServerring do
     GenServer.cast(server, {:del_node, node})
   end
 
-  # put the specified node in a specific kind of state: it can't be used by the
-  # cluster, so it will not received gossip and gossip received from it
-  # will be silently ignored ignored but the node can still be up and will
-  # continue to be monitored as long as needed. Even if a node get down, it will
-  # be removed from up_set but kept in the forced_down state until explicitly
-  # removed from there.
+  # forbid the use of the given node (no gossip sent to it, gossip from it
+  # ignored) but it might still be up, it will continue to be monitored as long
+  # as it is up.
   def force_down(server, n), do:  GenServer.call(server, {:forced_down, n})
 
   # remove a node of the forced_down state
