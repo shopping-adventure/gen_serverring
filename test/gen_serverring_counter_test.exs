@@ -1,6 +1,5 @@
 defmodule GenServerringCounterTest do
   use ExUnit.Case
-  doctest GenServerring
 
   defp update_state(state, action) do
     {mega, second, micro} = :erlang.now()
@@ -25,7 +24,7 @@ defmodule GenServerringCounterTest do
   # callbacks for tests
   def init([]), do: {:ok, Crdtex.Counter.new}
 
-  def handle_call(:get, _, counter), do: {:reply, Crdtex.value(counter), counter}
+  def handle_call(:get,_,counter), do: {:reply,Crdtex.value(counter),counter}
 
   def handle_cast(:inc,counter), do: {:noreply,update_state(counter,:increment)}
   def handle_cast(:dec,counter), do: {:noreply,update_state(counter,:decrement)}
