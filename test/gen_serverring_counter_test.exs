@@ -77,7 +77,9 @@ defmodule GenServerringCounterTest do
     {:ok, ring} = GenServerring.init({counter, __MODULE__})
     # ring and the state of the GenServerring are identical, let's modify ring
     counter = update_state(counter, :increment)
-    gossip = %{node_set: ring.node_set, payload: counter, from_node: []}
+    gossip =
+      %{node_set: ring.node_set, payload: counter, from_node: [],
+        forced_down: ring.forced_down}
     true = Process.register(self(), :tester_handle_state_change)
     GenServerring.cast(name, {:reconcile, gossip})
 

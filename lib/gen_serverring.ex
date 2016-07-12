@@ -226,7 +226,8 @@ defmodule GenServerring do
   defp update_payload(ring, payload) do
     {ring, _} =
       update_ring(ring,
-        %{node_set: ring.node_set, payload: payload, from_node: []})
+        %{node_set: ring.node_set, payload: payload, from_node: [],
+          forced_down: ring.forced_down})
     ring
   end
 
