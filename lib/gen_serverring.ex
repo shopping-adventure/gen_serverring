@@ -204,6 +204,26 @@ defmodule GenServerring do
   end
 
   # small utilities functions
+  defp value(payload), do: Crdtex.value(payload)
+
+  defp get_set(set), do: Crdtex.value(set)
+
+  defp contain?(set, e), do: Crdtex.value(set, {:contains, e})
+
+  defp add(set, actor, e), do: Crdtex.update(set, actor, {:add, e})
+
+  defp delete(set, actor, e), do: Crdtex.update(set, actor, {:remove, e})
+
+  defp merge(nil, crdt), do: crdt
+  defp merge(crdt, crdt), do: crdt
+  defp merge(crdt1, crdt2), do: Crdtex.merge(crdt1, crdt2)
+
+  defp get_ring(server), do: GenServer.call(server, :get_ring)
+
+  defp up_nodes(ring) do
+    MapSet.difference(ring.up_set, MapSet.new(get_set(ring.forced_down)))
+  end
+
   defp monitor(list) do
     list = List.delete(list, node())
     Enum.each(list, fn(n) -> Node.monitor(n, :true) end)
@@ -215,12 +235,6 @@ defmodule GenServerring do
   defp gen_ring(set, up, payload, counter, callback, forced_down) do
     %GenServerring{node_set: set, up_set: up, forced_down: forced_down,
       payload: payload, counter: counter, callback: callback}
-  end
-
-  defp get_ring(server), do: GenServer.call(server, :get_ring)
-
-  defp up_nodes(ring) do
-    MapSet.difference(ring.up_set, MapSet.new(get_set(ring.forced_down)))
   end
 
   defp update_payload(ring, payload) do
@@ -281,15 +295,6 @@ defmodule GenServerring do
     "#{Application.get_env(:gen_serverring, :data_dir, "./data")}/ring"
   end
 
-  defp value(payload), do: Crdtex.value(payload)
-
-  defp get_set(set), do: Crdtex.value(set)
-
-  defp contain?(set, e), do: Crdtex.value(set, {:contains, e})
-
-  defp add(set, actor, e), do: Crdtex.update(set, actor, {:add, e})
-
-  defp delete(set, actor, e), do: Crdtex.update(set, actor, {:remove, e})
   defp up_set_reconcile([], _), do: :nothingtodo
   defp up_set_reconcile([n], up_set) do
     case MapSet.member?(up_set, n) do
@@ -298,9 +303,6 @@ defmodule GenServerring do
     end
   end
 
-  defp merge(nil, crdt), do: crdt
-  defp merge(crdt, crdt), do: crdt
-  defp merge(crdt1, crdt2), do: Crdtex.merge(crdt1, crdt2)
   defp ring_reconcile([n], gossip, ring) do
     case contain?(ring.forced_down, n) do
       true -> {:noreply, ring} # must ignore gossips from forced_down nodes
