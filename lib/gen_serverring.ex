@@ -116,22 +116,9 @@ defmodule GenServerring do
   end
 
   def handle_cast({:reconcile, gossip}, ring) do
-    case gossip.from_node do
-      [] -> :nothingtodo
-      [n] ->
-        case MapSet.member?(ring.up_set, n) do
-          true -> :nothingtodo
-          false ->
-            # TODO add this info in the gossip to speedup the convergence of UPs
-            Node.monitor(n, true)
-        end
-    end
-    {ring, payload} = update_ring(ring, gossip)
-    case payload do
-      :no_payload_change -> :nothingtodo
-      _ -> ring.callback.handle_state_change(payload)
-    end
-    {:noreply, ring}
+    from_node = gossip.from_node
+    up_set_reconcile(from_node, ring.up_set)
+    ring_reconcile(from_node, gossip, ring)
   end
   def handle_cast({:add_node, n}, ring) do
     case contain?(ring.node_set, n) do
@@ -302,10 +289,31 @@ defmodule GenServerring do
   defp add(set, actor, e), do: Crdtex.update(set, actor, {:add, e})
 
   defp delete(set, actor, e), do: Crdtex.update(set, actor, {:remove, e})
+  defp up_set_reconcile([], _), do: :nothingtodo
+  defp up_set_reconcile([n], up_set) do
+    case MapSet.member?(up_set, n) do
+      true -> :nothingtodo
+      false -> Node.monitor(n, true)
+    end
+  end
 
   defp merge(nil, crdt), do: crdt
   defp merge(crdt, crdt), do: crdt
   defp merge(crdt1, crdt2), do: Crdtex.merge(crdt1, crdt2)
+  defp ring_reconcile([n], gossip, ring) do
+    case contain?(ring.forced_down, n) do
+      true -> {:noreply, ring} # must ignore gossips from forced_down nodes
+      false -> ring_reconcile([], gossip, ring)
+    end
+  end
+  defp ring_reconcile([], gossip, ring) do
+    {ring, payload} = update_ring(ring, gossip)
+    case payload do
+      :no_payload_change -> :nothingtodo
+      _ -> ring.callback.handle_state_change(payload)
+    end
+    {:noreply, ring}
+  end
 end
 
 defmodule GenServerring.App do
