@@ -253,7 +253,7 @@ defmodule GenServerring do
 
     up_set =
       notify_up_set(get_set(ring.node_set), get_set(merged_node_set),
-        MapSet.to_list(ring.up_set) ++ changes.from_node, ring.callback)
+        ring.up_set, changes.from_node, ring.callback)
     notify_node_set(ring.node_set, merged_node_set, changes.node_set)
 
     old_payload = ring.payload
@@ -272,14 +272,21 @@ defmodule GenServerring do
     end
   end
 
-  defp notify_up_set(set, set, old_up, _), do: MapSet.new(old_up)
+  defp notify_up_set(set, set, old_up, [], _), do: old_up
+  defp notify_up_set(set, set, old_up, [n], callback) do
+    case MapSet.member?(old_up, n) do
+      true -> old_up
+      false -> notify_up_set(set, set, MapSet.put(old_up, n), callback)
+    end
+  end
+
   defp notify_up_set(old_set, merged_set, old_up, callback) do
     new_up = MapSet.difference(MapSet.new(merged_set), MapSet.new(old_set))
     Enum.each(new_up, fn(n) -> Node.monitor(n, :true) end)
-    new_set = old_up ++ MapSet.to_list(new_up)
+    new_set = MapSet.union(new_up, old_up)
     GenEvent.notify(GenServerring.Events, {:new_up_set, old_up, new_set})
-    callback.handle_ring_set(new_set)
-    MapSet.new(new_set)
+    callback.handle_ring_change(new_set)
+    new_set
   end
 
   defp notify_node_set(set, set, _), do: :nothingtodo
