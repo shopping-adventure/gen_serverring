@@ -1,18 +1,29 @@
-defmodule GenServerringCounterTest do
+defmodule CtMonoCounterTest do
   use ExUnit.Case
+
+  setup_all do
+    assert :ok == Application.start(:iex)
+    assert :ok == Application.start(:logger)
+    assert :ok == Application.start(:crdtex)
+
+    :ok
+  end
+
+  setup context do
+    Application.put_env(:gen_serverring, :name, context.name)
+    Application.put_env(:gen_serverring, :callback, context.callback)
+    Application.start(:gen_serverring)
+
+    on_exit fn -> Application.stop(:gen_serverring) end
+
+    :ok
+  end
 
   defp update_state(state, action) do
     {mega, second, micro} = :erlang.now()
     dot = {node(), (mega * 1_000_000 + second) * 1_000_000 + micro}
     {:ok, state} = Crdtex.update(state, dot, action)
     state
-  end
-
-  defp setup_env(name) do
-    Application.put_env(:gen_serverring, :name, name)
-    Application.put_env(:gen_serverring, :callback, __MODULE__)
-    :ok = Application.stop(:gen_serverring)
-    :ok = Application.start(:gen_serverring)
   end
 
   defp inc(server), do: GenServerring.cast(server, :inc)
@@ -42,11 +53,13 @@ defmodule GenServerringCounterTest do
     send(:tester_handle_ring_change, {:ring_changed, up_set})
   end
 
+  @moduletag callback: __MODULE__
+  
+  @tag name: :call_cast_ring
   # counter on one node only, this is just checking that the interaction between
   # the callback and GenServerring is working as expected.
-  test "counter on one node, casts and calls" do
-    name = :gen_serverring_counter_test
-    setup_env(name)
+  test "counter on one node, casts and calls", context do
+    name = context.name
 
     assert get(name) == 0
     assert inc(name) == :ok
@@ -55,9 +68,9 @@ defmodule GenServerringCounterTest do
     assert get(name) == 0
   end
 
-  test "counter on one node, handle_info" do
-    name = :gen_serverring_counter_test
-    setup_env(name)
+  @tag name: :handle_info_ring
+  test "counter on one node, handle_info", context do
+    name = context.name
 
     true = Process.register(self(), :tester_handle_info)
     send(name, :weird_message)
@@ -65,12 +78,13 @@ defmodule GenServerringCounterTest do
     true = Process.unregister(:tester_handle_info)
   end
 
-  test "counter on one node, handle_state_change" do
+  @tag name: :handle_state_change_ring
+  # counter on one node only, this is just checking that the interaction between
+  test "counter on one node, handle_state_change", context do
     # testing handle_state_change with only one node, I have to cheat...
     # handle_state_change is trigerred if the payload change during a reconcile,
     # let's simulate that
-    name = :gen_serverring_counter_test
-    setup_env(name)
+    name = context.name
 
     {:ok, counter} = __MODULE__.init([])
     {:ok, ring} = GenServerring.init({counter, __MODULE__})
