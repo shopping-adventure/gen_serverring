@@ -126,7 +126,8 @@ defmodule GenServerring do
         {:ok, new_node_set} = add(ring.node_set, {node(), ring.counter + 1}, n)
         {ring, _} =
           update_ring(%GenServerring{ring | up_set: new_up_set},
-           %{node_set: new_node_set, payload: ring.payload, from_node: []})
+           %{node_set: new_node_set, payload: ring.payload, from_node: [],
+             forced_down: ring.forced_down})
         {:noreply, ring}
     end
   end
@@ -140,7 +141,8 @@ defmodule GenServerring do
           delete(ring.node_set, {node(), ring.counter + 1}, n)
         {ring, _} =
          update_ring(%GenServerring{ring | up_set: new_up_set},
-           %{node_set: new_node_set, payload: ring.payload, from_node: []})
+           %{node_set: new_node_set, payload: ring.payload, from_node: [],
+             forced_down: ring.forced_down})
         {:noreply, ring}
     end
   end
@@ -177,7 +179,7 @@ defmodule GenServerring do
   end
   def handle_info({:nodedown, n}, %GenServerring{up_set: up_set} = ring) do
     new_up_set =
-      case MapSet.member(up_set, n) do
+      case MapSet.member?(up_set, n) do
         true ->
           set = MapSet.delete(up_set, n)
           ring.callback.handle_ring_change(MapSet.to_list(set))
@@ -275,6 +277,12 @@ defmodule GenServerring do
       true -> old_up
       false -> notify_up_set(set, set, MapSet.put(old_up, n), callback)
     end
+  end
+  defp notify_up_set(old, merged, up, [], callback) do
+    notify_up_set(old, merged, up, callback)
+  end
+  defp notify_up_set(old, merged, up, [n], callback) do
+    notify_up_set(old, merged, MapSet.put(up, n), callback)
   end
 
   defp notify_up_set(old_set, merged_set, old_up, callback) do
