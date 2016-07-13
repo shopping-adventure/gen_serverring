@@ -1,10 +1,17 @@
 defmodule CtMonoCounterTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   setup_all do
-    assert :ok == Application.start(:iex)
-    assert :ok == Application.start(:logger)
-    assert :ok == Application.start(:crdtex)
+    Application.start(:iex)
+    Application.start(:logger)
+    Application.start(:crdtex)
+    File.mkdir("data")
+
+    on_exit fn() ->
+      Application.stop(:crdtex)
+      # Application.stop(:logger) you want the crash logs...
+      Application.stop(:iex)
+    end
 
     :ok
   end
@@ -41,16 +48,27 @@ defmodule CtMonoCounterTest do
   def handle_cast(:dec,counter), do: {:noreply,update_state(counter,:decrement)}
 
   def handle_info(msg, counter) do
-    send(:tester_handle_info, {:received, msg})
+    case Enum.member?(Process.registered(), :handle_info_ring) do
+      true -> send(:tester_handle_info, {:received, msg})
+      false -> :ok
+    end
     {:noreply, counter}
   end
 
   def handle_state_change(counter) do
-    send(:tester_handle_state_change, {:state_changed, Crdtex.value(counter)})
+    case Enum.member?(Process.registered(), :handle_state_change_ring) do
+      true ->
+        send(:tester_handle_state_change,
+          {:state_changed, Crdtex.value(counter)})
+      false -> :ok
+    end
   end
 
   def handle_ring_change(up_set) do
-    send(:tester_handle_ring_change, {:ring_changed, up_set})
+    case Enum.member?(Process.registered(), :handle_ring_change_ring) do
+      true -> send(:tester_handle_ring_change, {:ring_changed, up_set})
+      false -> :ok
+    end
   end
 
   @moduletag callback: __MODULE__
