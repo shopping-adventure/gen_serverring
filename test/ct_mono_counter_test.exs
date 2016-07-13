@@ -100,4 +100,19 @@ defmodule CtMonoCounterTest do
     true = Process.unregister(:tester_handle_state_change)
   end
 
+  @tag name: :handle_ring_change_ring
+  test "change of up_set on a single node", context do
+    name = context.name
+    Process.register(self(), :tester_handle_ring_change)
+    first_up_set = GenServerring.up(name)
+
+    # adding a non existant node should trigger 2 ring_changes, the fantasy node
+    # will be added to up_set and immediately after it will be detected as down
+
+    GenServerring.add_node(name, :fantasy@localhost)
+    assert_receive({:ring_changed, second_up_set})
+    assert_receive({:ring_changed, ^first_up_set})
+
+    assert Enum.member?(second_up_set, :fantasy@localhost)
+  end
 end
