@@ -1,16 +1,12 @@
-defmodule CtMonoCounterTest do
+defmodule MonoCounterTest do
   use ExUnit.Case, async: true
 
   setup_all do
-    Application.start(:iex)
-    Application.start(:logger)
     Application.start(:crdtex)
     File.mkdir("data")
 
     on_exit fn() ->
       Application.stop(:crdtex)
-      # Application.stop(:logger) you want the crash logs...
-      Application.stop(:iex)
     end
 
     :ok

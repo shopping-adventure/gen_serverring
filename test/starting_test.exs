@@ -1,13 +1,17 @@
-defmodule CtStartingAppTest do
+defmodule StartingTest do
   use ExUnit.Case, async: false
 
   setup_all do
-    assert :ok == Application.start(:iex)
-    assert :ok == Application.start(:logger)
-    assert :ok == Application.start(:crdtex)
+    Application.start(:crdtex)
+    
+    on_exit fn() ->
+      Application.stop(:crdtex)
+    end
+
     :ok
   end
 
+  #@tag :pending
   test "default params" do
     assert :ok == Application.start(:gen_serverring)
     assert true == Enum.member?(Process.registered(), :demo_ring)
