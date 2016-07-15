@@ -126,6 +126,7 @@ defmodule CtMonoCounterTest do
 
     # adding a non existant node should trigger 2 ring_changes, the fantasy node
     # will be added to up_set and immediately after it will be detected as down
+    # require that ct is launched with --sname
 
     GenServerring.add_node(name, :fantasy@localhost)
     assert_receive({:ring_changed, second_up_set})

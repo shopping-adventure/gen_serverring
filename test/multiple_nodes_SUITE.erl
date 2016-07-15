@@ -69,4 +69,4 @@ elixir_dir() -> "/usr/lib/elixir/lib/".
 
 test_dir() ->
     {ok, CWD} = file:get_cwd(),
-    filename:join(CWD, "../../../../test").
+    filename:join(CWD, "../../test").
