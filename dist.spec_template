@@ -1,7 +1,3 @@
-{node, n1, n1@cantor}.
-{node, n2, n2@cantor}.
-{node, n3, n3@cantor}.
-{node, n4, n4@cantor}.
 
 {logdir, all_nodes, "./ct_multi_logs"}.
 {logdir, master, "./ct_multi_logs"}.

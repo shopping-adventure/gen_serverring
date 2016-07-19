@@ -1,8 +1,6 @@
 defmodule WriterTest do
   use ExUnit.Case, async: true
 
-  @host "cantor"
-
   setup context do
     case File.dir?("./data") do
       true -> File.rm_rf("./data")
@@ -24,21 +22,27 @@ defmodule WriterTest do
   @tag name: :ct_test_ring
   # using Demo as callback
   test "writing to ring", context do
+    host = hostname()
     ring = context.name
     Demo.inc(ring)
     :ct.sleep(5_000)
-    GenServerring.add_node(ring, :"n2@#{@host}")
+    GenServerring.add_node(ring, :"n2@#{host}")
     Demo.inc(ring)
     :ct.sleep(5_000)
-    GenServerring.add_node(ring, :"n3@#{@host}")
+    GenServerring.add_node(ring, :"n3@#{host}")
     Demo.inc(ring)
     :ct.sleep(5_000)
-    GenServerring.add_node(ring, :"n4@#{@host}")
+    GenServerring.add_node(ring, :"n4@#{host}")
     Demo.inc(ring)
     :ct.sleep(5_000)
     Demo.inc(ring)
 
     :ct.sleep(10_000)
+  end
+
+  defp hostname do
+    {name, 0} = System.cmd("hostname", [])
+    String.strip(name)
   end
 end
 
