@@ -6,27 +6,37 @@
 
 -module(ct_elixir_wrapper).
 
--export([init/0, stop/0, run_elixir_test/1, test_dir/0]).
+-export([elixir_init/0, init/0, stop/0, run_elixir_test/1, test_dir/0]).
+
+-export([apps_path/0]).
+
+apps_path() ->
+    {ok, Cwd} = file:get_cwd(),
+    Build = lists:append(Cwd, "/_build/dev/lib/"),
+    code:add_patha(lists:append(Build, "crdtex/ebin")),
+    code:add_patha(lists:append(Build, "gen_serverring/ebin")).
+
+elixir_init() ->
+    code:add_patha(elixir_dir() ++ "elixir/ebin"),
+    code:add_patha(elixir_dir() ++ "ex_unit/ebin"),
+    code:add_patha(elixir_dir() ++ "iex/ebin"),
+    code:add_patha(elixir_dir() ++ "logger/ebin"),
+    application:start(compiler),
+    application:start(elixir),
+    'Elixir.Application':start(iex),
+    'Elixir.Application':start(logger).
+
 
 init() ->
-		% TODO: a better solution for paths...
-		true = code:add_patha(elixir_dir() ++ "elixir/ebin"),
-		true = code:add_patha(elixir_dir() ++ "ex_unit/ebin"),
-		true = code:add_patha(elixir_dir() ++ "iex/ebin"),
-		true = code:add_patha(elixir_dir() ++ "logger/ebin"),
-		true = code:add_patha(test_dir() ++ "/../_build/dev/lib/crdtex/ebin"),
-		true =
-		    code:add_patha(test_dir() ++ "/../_build/dev/lib/gen_serverring/ebin"),
-		ok = application:start(compiler),
-		ok = application:start(elixir),
-		ok = 'Elixir.Application':start(iex),
-		ok = 'Elixir.Application':start(logger).
+    elixir_init(),
+    true = code:add_patha(base_dir() ++ "/_build/dev/lib/crdtex/ebin"),
+    true = code:add_patha(base_dir() ++ "/_build/dev/lib/gen_serverring/ebin").
 
 stop() ->
     'Elixir.Application':stop(logger),
-	  'Elixir.Application':stop(iex),
-		application:stop(elixir),
-		application:stop(compiler).
+    'Elixir.Application':stop(iex),
+    application:stop(elixir),
+    application:stop(compiler).
 
 run_elixir_test(Func) ->
     %% Elixir tests can be tagged as follow to be ignored (place before test
@@ -53,6 +63,8 @@ run_elixir_test(Func) ->
 
 elixir_dir() -> "/usr/lib/elixir/lib/".
 
-test_dir() ->
+base_dir() ->
     {ok, CWD} = file:get_cwd(),
-    filename:join(CWD, "../../test").
+    filename:join(CWD, "../..").
+
+test_dir() -> base_dir() ++ "/test".

@@ -19,16 +19,16 @@ defmodule ReaderTest do
   end
 
   test "reading from the default ring" do
-    :timer.sleep(7_000) # wait to be part of the ring
-    v = Demo.get # v should be 2
+    :ct.sleep(7_000)
+    v = Demo.get
     2 = v
-    :timer.sleep(7_000)
+    :ct.sleep(7_000)
     t = Demo.get
     assert t == (v + 1)
-    :timer.sleep(5_000)
+    :ct.sleep(5_000)
     t = Demo.get
     assert t == (v + 2)
-    :timer.sleep(5_000)
+    :ct.sleep(5_000)
     t = Demo.get
     assert t == (v + 3)
   end

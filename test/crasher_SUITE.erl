@@ -6,6 +6,4 @@
 
 all() -> [crasher_test].
 
-crasher_test(_) ->
-    timer:sleep(11000),
-		init:stop().
+crasher_test(_) -> ct_elixir_wrapper:run_elixir_test('crasher_test.exs').

@@ -19,9 +19,10 @@ defmodule CrasherTest do
   end
 
   test "just a stupid crasher..." do
-    :timer.sleep(18_000)
+    :ct.sleep(18_000) # node 4 added to ring and 3 gossips occured
     Demo.get
-    :timer.sleep(5_000)
+    :ct.sleep(5_000)
+    Demo.get
     :init.stop
   end
 end
