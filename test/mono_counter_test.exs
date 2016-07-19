@@ -93,7 +93,6 @@ defmodule MonoCounterTest do
   end
 
   @tag name: :handle_state_change_ring
-  # counter on one node only, this is just checking that the interaction between
   test "counter on one node, handle_state_change", context do
     # testing handle_state_change with only one node, I have to cheat...
     # handle_state_change is trigerred if the payload change during a reconcile,
