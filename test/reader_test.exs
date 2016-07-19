@@ -1,13 +1,14 @@
 defmodule ReaderTest do
   use ExUnit.Case, async: true
 
-  setup do
+  setup context do
     case File.dir?("./data") do
       true -> File.rm_rf("./data")
       false -> :ok
     end
     assert :ok == File.mkdir("./data")
     Application.start(:crdtex)
+    Application.put_env(:gen_serverring, :name, context.name)
     Application.start(:gen_serverring)
 
     on_exit fn() ->
@@ -18,18 +19,21 @@ defmodule ReaderTest do
     :ok
   end
 
-  test "reading from the default ring" do
+  @tag name: :ct_test_ring
+  # using the default callback: Demo
+  test "reading from ring", context do
+    ring = context.name
     :ct.sleep(7_000)
-    v = Demo.get
+    v = Demo.get(ring)
     2 = v
     :ct.sleep(7_000)
-    t = Demo.get
+    t = Demo.get(ring)
     assert t == (v + 1)
     :ct.sleep(5_000)
-    t = Demo.get
+    t = Demo.get(ring)
     assert t == (v + 2)
     :ct.sleep(5_000)
-    t = Demo.get
+    t = Demo.get(ring)
     assert t == (v + 3)
   end
 end

@@ -1,13 +1,16 @@
 defmodule WriterTest do
   use ExUnit.Case, async: true
 
-  setup do
+  @host "cantor"
+
+  setup context do
     case File.dir?("./data") do
       true -> File.rm_rf("./data")
       false -> :ok
     end
     assert :ok == File.mkdir("./data")
     Application.start(:crdtex)
+    Application.put_env(:gen_serverring, :name, context.name)
     Application.start(:gen_serverring)
 
     on_exit fn() ->
@@ -18,20 +21,24 @@ defmodule WriterTest do
     :ok
   end
 
-  test "writing to the default ring" do
-    Demo.inc
-    :timer.sleep(5000)
-    GenServerring.add_node(:demo_ring, :n2@localhost)
-    Demo.inc
-    :timer.sleep(5000)
-    GenServerring.add_node(:demo_ring, :n3@localhost)
-    Demo.inc
-    :timer.sleep(5000)
-    GenServerring.add_node(:demo_ring, :n4@localhost)
-    Demo.inc
-    :timer.sleep(5000)
-    Demo.inc
+  @tag name: :ct_test_ring
+  # using Demo as callback
+  test "writing to ring", context do
+    ring = context.name
+    Demo.inc(ring)
+    :ct.sleep(5_000)
+    GenServerring.add_node(ring, :"n2@#{@host}")
+    Demo.inc(ring)
+    :ct.sleep(5_000)
+    GenServerring.add_node(ring, :"n3@#{@host}")
+    Demo.inc(ring)
+    :ct.sleep(5_000)
+    GenServerring.add_node(ring, :"n4@#{@host}")
+    Demo.inc(ring)
+    :ct.sleep(5_000)
+    Demo.inc(ring)
 
-    :timer.sleep(10_000)
+    :ct.sleep(10_000)
   end
 end
+
