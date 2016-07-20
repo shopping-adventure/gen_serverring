@@ -23,6 +23,7 @@ client in case of a change of the set of up nodes or payload respectively.
 Each node of the ring has a state consisting of shared elements
  - node_set: a CRDT OR-set representing all the nodes of the cluster
  - payload: a CRDT wich is managed by the client but shared by the ring
+
 and a few elements that are kept locally
  - up_set: a MapSet keeping track of the nodes that are up. Each of the other
 nodes of this set is monitored (Node.monitor/2)
