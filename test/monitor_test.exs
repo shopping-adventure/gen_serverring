@@ -7,10 +7,10 @@ defmodule MonitorTest do
       false -> :ok
     end
     assert :ok == File.mkdir("./data")
-    Application.start(:crdtex)
+    :ok = Application.start(:crdtex)
     Application.put_env(:gen_serverring, :name, context.name)
     Application.put_env(:gen_serverring, :callback, context.callback)
-    Application.start(:gen_serverring)
+    :ok = Application.start(:gen_serverring)
 
     on_exit fn() ->
       Application.stop(:gen_serverring)
