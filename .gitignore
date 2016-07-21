@@ -3,5 +3,6 @@
 /deps
 erl_crash.dump
 *.ez
+*.swp
 *.beam
 mix.lock
