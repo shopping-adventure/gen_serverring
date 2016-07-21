@@ -11,12 +11,15 @@ is just sharing it amongst the nodes of the ring.
 
 GenServerring is very similar to GenServer, so it provides the same API
 (`init/1`, `call/2`, `cast/2`, `reply/2` and `stop/1`, `stop/2`, `stop/3`) and
-expect the same callbacks (handle_call, handle_cast, handle_info).
+expect the same callbacks (`handle_call`, `handle_cast`, `handle_info`).
 
 On top of a classical GenServer, it provides 2 extra API calls (`add_node/2` and
 `del_node/2`) to manage the ring. It also expects 2 extra callbacks
 (`handle_ring_change` and `handle_state_change`) that are use to notify the
 client in case of a change of the set of up nodes or payload respectively.
+
+Finally, you can prevent the ring from using a node with `force_down/2`. It will
+be detailed on its own to keep explanations simple.
 
 ## How does it work? ##
 
@@ -39,7 +42,7 @@ reception of such a gossip, a node merge its own node_set and payload (using
 `Crdtex.merge`) with the received one. In case of a change of payload or up_set,
 the client is also notified through the corresponding callbacks.
 
-### maintaining up_set ###
+### Maintaining `up_set` ###
 
 Each time a gossip is received from a node, we know that is node is up. If it
 was not already in the up_set it is added there and the node is monitored.
@@ -51,7 +54,21 @@ This way, a node going down is triggering an immediate reaction on each of the
 other nodes of the ring. A node joining the ring will be gradually discovered by
 all the others through the gossip mechanism.
 
-## testing ##
+### Preventing a node from being used ###
+If, for whatever reason, you want to forbid the ring to use a node but you can't
+or don't want to remove the node from the ring, you can use `force_down/2` to
+achieve this result and you can bring it back later in use with
+`unforce_down/2`.
+
+This two calls simply add (resp. remove) the node to a shared CRDT OR-set. A
+node present in this set will not be pickup for gossip, gossips received from
+such a node will be ignored and it will be considered as not being member of
+`up_set`. It will however continue to be monitored if it was.
+
+A node that is forced down will continue to maintain it state, simply it will
+stop receiving gossips.
+
+## Testing ##
 
 In order to test a cluster of 1 node (how exiting) use `./ct_test.sh`.
 
@@ -62,7 +79,7 @@ config file to use.
 Both scripts use erlang common_test and place their results in `ct_logs` and
 `ct_multi_logs` respectively
 
-## usage ##
+## Usage ##
 A cluster must have a local name (the same name amongst the node of the ring)
 and a callback (it can varies amongst nodes but this is not advisable. I use
 this possibility for testing purpose in `monitor_test.exs`).
