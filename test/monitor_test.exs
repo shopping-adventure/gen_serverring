@@ -53,18 +53,44 @@ defmodule MonitorTest do
     ring = context.name
     assert length(GenServerring.all(ring)) == 1
     assert length(GenServerring.up(ring)) == 1
-    :ct.sleep(13_000) # wait to be part of the ring
+
+    # wait to be part of the ring
+    :ct.sleep(13_000)
     all = GenServerring.all(ring)
     up = GenServerring.up(ring)
     assert length(all) == 3
     assert length(up) == 3
-    :ct.sleep(5_000) # n4 added and enough gossips should have occured
+
+    # n4 added and enough gossips should have occured
+    :ct.sleep(5_000) # 18 sec
     all2 = GenServerring.all(ring)
     up2 = GenServerring.up(ring)
     assert length(all2) == 4
     assert length(up2) == 4
-    :ct.sleep(6_000) # n4 has crashed
+
+    # n4 has crashed
+    :ct.sleep(6_000) # 24 sec
     ^all2 = GenServerring.all(ring)
     assert length(GenServerring.up(ring)) == 3
+
+    # forcing n2 down during 10 seconds
+    n2 = :"n2@#{hostname()}"
+    :ct.sleep(3_000) # 27 sec
+    assert Enum.member?(GenServerring.all(ring), n2)
+    assert Enum.member?(GenServerring.up(ring), n2)
+    GenServerring.force_down(ring, n2)
+    assert Enum.member?(GenServerring.all(ring), n2)
+    assert false == Enum.member?(GenServerring.up(ring), n2)
+    :ct.sleep(10_000) # 37 sec
+    GenServerring.unforce_down(ring, n2)
+    assert Enum.member?(GenServerring.all(ring), n2)
+    assert Enum.member?(GenServerring.up(ring), n2)
+
+    :ct.sleep(3_000) # give time to n3 to gossip that n2 is back
+  end
+
+  defp hostname do
+    {name, 0} = System.cmd("hostname", [])
+    String.strip(name)
   end
 end

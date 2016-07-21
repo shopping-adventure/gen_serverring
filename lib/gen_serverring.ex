@@ -90,13 +90,13 @@ defmodule GenServerring do
     {:ok, forced_down} = delete(ring.forced_down, {node(), counter}, n)
     up_set = ring.up_set
     up_set =
-      case MapSet.member(up_set, n) do
+      case MapSet.member?(up_set, n) do
         true -> up_set
         false ->
           Node.monitor(n, true)
           MapSet.put(up_set, n)
       end
-    {:reply, MapSet.to_list(forced_down),
+    {:reply, get_set(forced_down),
       %{ring | forced_down: forced_down, up_set: up_set, counter: counter}}
   end
   def handle_call(other, from, ring) do
@@ -182,7 +182,7 @@ defmodule GenServerring do
       case MapSet.member?(up_set, n) do
         true ->
           set = MapSet.delete(up_set, n)
-          ring.callback.handle_ring_change(MapSet.to_list(set))
+          ring.callback.handle_ring_change({MapSet.to_list(set), :nodedown})
           set
         false -> up_set
       end
@@ -290,7 +290,7 @@ defmodule GenServerring do
     Enum.each(new_up, fn(n) -> Node.monitor(n, :true) end)
     new_set = MapSet.union(new_up, old_up)
     GenEvent.notify(GenServerring.Events, {:new_up_set, old_up, new_set})
-    callback.handle_ring_change(new_set)
+    callback.handle_ring_change({MapSet.to_list(new_set), :gossip})
     new_set
   end
 
