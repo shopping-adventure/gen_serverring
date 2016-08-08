@@ -60,7 +60,7 @@ defmodule MonoCounterTest do
     end
   end
 
-  def handle_ring_change(up_set) do
+  def handle_ring_change({up_set, _, _}) do
     case Enum.member?(Process.registered(), :handle_ring_change_ring) do
       true -> send(:tester_handle_ring_change, {:ring_changed, up_set})
       false -> :ok
