@@ -48,19 +48,15 @@ defmodule GenServerring do
     Genserver.stop(server, reason, timeout)
   end
 
-  def add_node(server, node) when is_binary(node) do
-    add_node(server, :"#{node}")
-  end
-  def add_node(server, node) when is_atom(node) do
-    GenServer.cast(server, {:add_node, node})
-  end
+  def add_node(server, node) when is_binary(node),
+    do: add_node(server, :"#{node}")
+  def add_node(server, node) when is_atom(node),
+    do: GenServer.cast(server, {:add_node, node})
 
-  def del_node(server, node) when is_binary(node) do
-    del_node(server, :"#{node}")
-  end
-  def del_node(server, node) when is_atom(node) do
-    GenServer.cast(server, {:del_node, node})
-  end
+  def del_node(server, node) when is_binary(node),
+    do: del_node(server, :"#{node}")
+  def del_node(server, node) when is_atom(node),
+    do: GenServer.cast(server, {:del_node, node})
 
   # forbid the use of the given node (no gossip sent to it, gossip from it
   # ignored) but it might still be up, it will continue to be monitored as long
@@ -75,9 +71,8 @@ defmodule GenServerring do
 
   # classic GenServer callbacks
   def handle_call(:get_all, _, ring), do: {:reply, get_set(ring.node_set), ring}
-  def handle_call(:get_up, _, ring) do
-    {:reply, MapSet.to_list(up_nodes(ring)), ring}
-  end
+  def handle_call(:get_up, _, ring),
+    do: {:reply, MapSet.to_list(up_nodes(ring)), ring}
   def handle_call(:get_ring, _, ring), do: {:reply, {:ok, ring}, ring}
   def handle_call({:forced_down, n}, _, ring) do
     counter = ring.counter + 1
@@ -221,18 +216,16 @@ defmodule GenServerring do
 
   defp get_ring(server), do: GenServer.call(server, :get_ring)
 
-  defp up_nodes(ring) do
-    MapSet.difference(ring.up_set, MapSet.new(get_set(ring.forced_down)))
-  end
+  defp up_nodes(ring),
+    do: MapSet.difference(ring.up_set, MapSet.new(get_set(ring.forced_down)))
 
   defp monitor(list) do
     list = List.delete(list, node())
     Enum.each(list, fn(n) -> Node.monitor(n, :true) end)
   end
 
-  defp gen_ring(set, up, payload, counter, callback) do
-    gen_ring(set, up, payload, counter, callback, Crdtex.Set.new)
-  end
+  defp gen_ring(set, up, payload, counter, callback),
+    do: gen_ring(set, up, payload, counter, callback, Crdtex.Set.new)
   defp gen_ring(set, up, payload, counter, callback, forced_down) do
     %GenServerring{node_set: set, up_set: up, forced_down: forced_down,
       payload: payload, counter: counter, callback: callback}
@@ -280,12 +273,10 @@ defmodule GenServerring do
       false -> notify_up_set(set, set, MapSet.put(old_up, n), callback)
     end
   end
-  defp notify_up_set(old, merged, up, [], callback) do
-    notify_up_set(old, merged, up, callback)
-  end
-  defp notify_up_set(old, merged, up, [n], callback) do
-    notify_up_set(old, merged, MapSet.put(up, n), callback)
-  end
+  defp notify_up_set(old, merged, up, [], callback),
+    do: notify_up_set(old, merged, up, callback)
+  defp notify_up_set(old, merged, up, [n], callback),
+    do: notify_up_set(old, merged, MapSet.put(up, n), callback)
 
   defp notify_up_set(old_set, merged_set, old_up, callback) do
     new_up = MapSet.difference(MapSet.new(merged_set), MapSet.new(old_set))
@@ -299,7 +290,8 @@ defmodule GenServerring do
 
   defp notify_node_set(set, set, _), do: :nothingtodo
   defp notify_node_set(old_set, _, new_set) do
-    GenEvent.notify(GenServerring.Events, {:new_node_set, get_set(old_set), get_set(new_set)})
+    GenEvent.notify(GenServerring.Events,
+      {:new_node_set, get_set(old_set), get_set(new_set)})
       File.write!(ring_path, new_set |> :erlang.term_to_binary)
   end
 
@@ -341,9 +333,8 @@ defmodule GenServerring.App do
     callback = Application.get_env(:gen_serverring, :callback, Demo)
     start(type, [{name, callback}])
   end
-  def start(_type, args) do
-    Supervisor.start_link(GenServerring.App.Sup, args)
-  end
+  def start(_type, args),
+    do: Supervisor.start_link(GenServerring.App.Sup, args)
 
   defmodule Sup do
     use Supervisor
