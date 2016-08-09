@@ -306,9 +306,8 @@ defmodule GenServerring do
   defp notify_payload(payload, payload, _), do: :no_payload_change
   defp notify_payload(_, _, ring), do: ring.payload
 
-  defp ring_path do
-    "#{Application.get_env(:gen_serverring, :data_dir, "./data")}/ring"
-  end
+  defp ring_path,
+    do: "#{Application.get_env(:gen_serverring, :data_dir, "./data")}/ring"
 
   defp up_set_reconcile([], _), do: :nothingtodo
   defp up_set_reconcile([n], up_set) do
@@ -348,9 +347,18 @@ defmodule GenServerring.App do
 
   defmodule Sup do
     use Supervisor
+
+    def init(:no_child) do
+      # just start a GenEvent, no event_handler are defined, add yours if you
+      # need some
+      event_name = GenServerring.Events
+      child = [worker(:gen_event, [{:local, event_name}], id: event_name)]
+      supervise(child, strategy: :one_for_one)
+    end
     def init(arg) do
+      event_name = GenServerring.Events
       children =
-        [worker(:gen_event, [{:local, GenServerring.Events}], id: GenServerring.Events),
+        [worker(:gen_event, [{:local, event_name}], id: event_name),
          worker(GenServerring, arg)]
       supervise(children, strategy: :one_for_one)
     end
