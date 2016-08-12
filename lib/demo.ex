@@ -14,14 +14,15 @@ defmodule Demo do
   # callback.terminate
   def init([]), do: {:ok, Crdtex.Counter.new}
 
-  def handle_call(:get, _, counter), do: {:reply, Crdtex.value(counter), counter}
+  def handle_call(:get, _, counter),
+    do: {:reply, Crdtex.value(counter), counter}
 
   def handle_cast(:inc, counter) do
-    {:ok, counter} = Crdtex.update(counter, {node(), dot()}, :increment)
+    {:ok, counter} = Crdtex.update(counter, {node, dot}, :increment)
     {:noreply, counter}
   end
   def handle_cast(:dec, counter) do
-    {:ok, counter} = Crdtex.update(counter, {node(), dot()}, :decrement)
+    {:ok, counter} = Crdtex.update(counter, {node, dot}, :decrement)
     {:noreply, counter}
   end
 
@@ -37,7 +38,8 @@ defmodule Demo do
   # handle_info, it could make sense to let it modify the payload by returning
   # {:noreply, new_payload} | {:noreply, new_payload, :hibernate} |
   # {:no_reply, new_payload, timeout} | {:stop, reason, new_payload}
-  def handle_state_change(state), do: IO.puts("new state #{Crdtex.value(state)}")
+  def handle_state_change(state),
+    do: IO.puts("new state #{Crdtex.value(state)}")
 
   def handle_ring_change(nodes), do: IO.inspect(nodes)
 

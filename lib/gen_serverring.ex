@@ -43,7 +43,7 @@ defmodule GenServerring do
   # we have to stop all nodes
   def stop({name, n} = server, reason \\ :normal, timeout \\ :infinity) do
     {:ok, ring} = get_ring(server)
-    others = ring.up_set |> MapSet.delete(n)
+    others = MapSet.delete(ring.up_set, n)
     Enum.each(others, fn(n) -> GenServer.stop({name, n}, reason, timeout) end)
     Genserver.stop(server, reason, timeout)
   end
