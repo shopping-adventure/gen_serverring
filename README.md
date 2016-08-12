@@ -24,14 +24,14 @@ be detailed on its own to keep explanations simple.
 ## How does it work? ##
 
 Each node of the ring has a state consisting of shared elements
- - node_set: a CRDT OR-set representing all the nodes of the cluster
- - payload: a CRDT wich is managed by the client but shared by the ring
+ - `node_set`: a CRDT OR-set representing all the nodes of the cluster
+ - `payload`: a CRDT wich is managed by the client but shared by the ring
 
 and a few elements that are kept locally
- - up_set: a MapSet keeping track of the nodes that are up. Each of the other
-nodes of this set is monitored (Node.monitor/2)
- - counter: an increasing integer needed by Crdtex.update/3
- - callback: the module implementing the callbacks
+ - `up_set`: a MapSet keeping track of the nodes that are up. Each of the other
+nodes of this set is monitored (`Node.monitor/2`)
+ - `counter`: an increasing integer needed by `Crdtex.update/3`
+ - `callback`: the module implementing the callbacks
 
 ### Sharing informations ###
 
@@ -65,19 +65,21 @@ node present in this set will not be pickup for gossip, gossips received from
 such a node will be ignored and it will be considered as not being member of
 `up_set`. It will however continue to be monitored if it was.
 
-A node that is forced down will continue to maintain it state, simply it will
+A node that is forced down will continue to maintain its state, simply it will
 stop receiving gossips.
 
 ## Testing ##
 
-In order to test a cluster of 1 node (how exiting) use `./ct_test.sh`.
+In order to test a cluster of 1 node (how exiting) simply use `mix test
+test/mono_counter_test.exs`.
 
 In ordor to test a cluster of 4 nodes wich should be more interesting use
-`.//distributed_tests.sh`. This script expects the name of the common test
-config file to use.
+`./distributed_tests.sh`. This script expects the name of the common test
+config file to use. If you provide the name of a non existing file, a default
+spec file named that way will be generated for you.
 
-Both scripts use erlang common_test and place their results in `ct_logs` and
-`ct_multi_logs` respectively
+`./distributed_tests.sh` uses erlang common_test and place its results in
+`ct_multi_logs`.
 
 ## Usage ##
 A cluster must have a local name (the same name amongst the node of the ring)
@@ -90,4 +92,4 @@ example). You can remove a node with `GenServerring.del_node/2`. You can check
 which nodes are member of the ring (resp. up) with `GenServerring.all/1` (resp.
 `GenServerring.up/1).
 
-`demo.exs` shows an exemple of a client using `GenServerring`.
+`demo.ex` shows an exemple of a client using `GenServerring`.
