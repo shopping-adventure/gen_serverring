@@ -1,21 +1,28 @@
 #! /bin/sh
 
-HOST=`hostname`
-[ -e $1 ] && echo "$1 already exists" && exit 1
+if [ ! $# -eq 1 ] ; then
+	echo "You must provide the name of a common_test spec file"
+	exit 1
+fi
 
+mix compile
 logdir=./ct_multi_logs
-
-[ ! -d $logdir ] && mkdir -p $logdir
 
 cd test
 erlc ct_elixir_wrapper.erl
 cd ..
 
-for NODE in n1 n2 n3 n4
-  do echo "{node, $NODE, $NODE@$HOST}." >> $1
-done
+[ ! -d $logdir ] && mkdir -p $logdir
 
-cat dist.spec_template >> $1
+HOST=`hostname`
+
+# generate a spec file for a cluster of 4 nodes with all nodes on local host
+if [ ! -e $1 ] ; then
+	for NODE in n1 n2 n3 n4
+		do echo "{node, $NODE, $NODE@$HOST}." >> $1
+	done
+	cat dist.spec_template >> $1
+fi
 
 elixir --erl "-s init stop" \
     --sname ct_master@$HOST \
