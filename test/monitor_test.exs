@@ -8,9 +8,7 @@ defmodule MonitorTest do
     end
     assert :ok == File.mkdir("./data")
     :ok = Application.start(:crdtex)
-    Application.put_env(:gen_serverring, :name, context.name)
-    Application.put_env(:gen_serverring, :callback, context.callback)
-    :ok = Application.start(:gen_serverring)
+    {:ok, _} = GenServerring.start_link({context.name, context.callback})
 
     on_exit fn() ->
       Application.stop(:gen_serverring)
@@ -62,14 +60,14 @@ defmodule MonitorTest do
     assert length(up) == 3
 
     # n4 added and enough gossips should have occured
-    :ct.sleep(5_000) # 18 sec
+    :ct.sleep(6_000) # 19 sec
     all2 = GenServerring.all(ring)
     up2 = GenServerring.up(ring)
     assert length(all2) == 4
     assert length(up2) == 4
 
     # n4 has crashed
-    :ct.sleep(6_000) # 24 sec
+    :ct.sleep(5_000) # 24 sec
     ^all2 = GenServerring.all(ring)
     assert length(GenServerring.up(ring)) == 3
 

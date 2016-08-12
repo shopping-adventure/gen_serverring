@@ -8,8 +8,7 @@ defmodule CrasherTest do
     end
     assert :ok == File.mkdir("./data")
     :ok = Application.start(:crdtex)
-    Application.put_env(:gen_serverring, :name, context.name)
-    :ok = Application.start(:gen_serverring)
+    {:ok, _} = GenServerring.start_link({context.name, Demo})
 
     on_exit fn() ->
       Application.stop(:gen_serverring)

@@ -282,18 +282,14 @@ defmodule GenServerring do
     new_up = MapSet.difference(MapSet.new(merged_set), MapSet.new(old_set))
     Enum.each(new_up, fn(n) -> Node.monitor(n, :true) end)
     new_set = MapSet.union(new_up, old_up)
-    GenEvent.notify(GenServerring.Events, {:new_up_set, old_up, new_set})
     {:registered_name, name} = Process.info(self(), :registered_name)
     callback.handle_ring_change({MapSet.to_list(new_set), name, :gossip})
     new_set
   end
 
   defp notify_node_set(set, set, _), do: :nothingtodo
-  defp notify_node_set(old_set, _, new_set) do
-    GenEvent.notify(GenServerring.Events,
-      {:new_node_set, get_set(old_set), get_set(new_set)})
-      File.write!(ring_path, new_set |> :erlang.term_to_binary)
-  end
+  defp notify_node_set(old_set, _, new_set),
+    do: File.write!(ring_path, :erlang.term_to_binary(new_set))
 
   defp notify_payload(payload, payload, _), do: :no_payload_change
   defp notify_payload(_, _, ring), do: ring.payload
@@ -324,35 +320,3 @@ defmodule GenServerring do
     {:noreply, ring}
   end
 end
-
-defmodule GenServerring.App do
-  use Application
-
-  def start(type, []) do
-    name = Application.get_env(:gen_serverring, :name, :demo_ring)
-    callback = Application.get_env(:gen_serverring, :callback, Demo)
-    start(type, [{name, callback}])
-  end
-  def start(_type, args),
-    do: Supervisor.start_link(GenServerring.App.Sup, args)
-
-  defmodule Sup do
-    use Supervisor
-
-    def init(:no_child) do
-      # just start a GenEvent, no event_handler are defined, add yours if you
-      # need some
-      event_name = GenServerring.Events
-      child = [worker(:gen_event, [{:local, event_name}], id: event_name)]
-      supervise(child, strategy: :one_for_one)
-    end
-    def init(arg) do
-      event_name = GenServerring.Events
-      children =
-        [worker(:gen_event, [{:local, event_name}], id: event_name),
-         worker(GenServerring, arg)]
-      supervise(children, strategy: :one_for_one)
-    end
-  end
-end
-

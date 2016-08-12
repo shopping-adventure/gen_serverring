@@ -3,7 +3,7 @@ defmodule GenServerring.Mixfile do
 
   def project do
     [app: :gen_serverring,
-     version: "0.0.3",
+     version: "0.0.4",
      elixir: "~> 1.2",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
@@ -14,8 +14,7 @@ defmodule GenServerring.Mixfile do
   #
   # Type "mix help compile.app" for more information
   def application do
-    [mod: {GenServerring.App, []},
-     applications: [:iex, :crdtex],
+    [applications: [:iex, :crdtex],
      env: [data_dir: "./data"]]
   end
 

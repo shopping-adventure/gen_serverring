@@ -8,11 +8,9 @@ defmodule WriterTest do
     end
     assert :ok == File.mkdir("./data")
     :ok = Application.start(:crdtex)
-    Application.put_env(:gen_serverring, :name, context.name)
-    :ok = Application.start(:gen_serverring)
+    {:ok, _} = GenServerring.start_link({context.name, Demo})
 
     on_exit fn() ->
-      Application.stop(:gen_serverring)
       Application.stop(:crdtex)
     end
 
@@ -56,7 +54,7 @@ defmodule WriterTest do
     :ct.sleep(5_000) # 40 sec
     Demo.inc(ring)
 
-    :ct.sleep(10_000)
+    :ct.sleep(6_000)
   end
 
   defp hostname do
