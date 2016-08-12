@@ -32,18 +32,17 @@ defmodule Demo do
   end
 
   # specific to GenServerring and mandatory
-  # useful only for side effects (such as persisting the payload)  as it does
+  # useful only for side effects (such as persisting the payload) as it does
   # not allow the payload to be changed (at least not for time being).
-  # As it is triggered by a handle_cast which is itself triggered by a
-  # handle_info, it could make sense to let it modify the payload by returning
-  # {:noreply, new_payload} | {:noreply, new_payload, :hibernate} |
+  # It is triggered by a handle_cast which is itself triggered by a
+  # handle_info, so it could make sense to let it modify the payload by
+  # returning {:noreply, new_payload} | {:noreply, new_payload, :hibernate} |
   # {:no_reply, new_payload, timeout} | {:stop, reason, new_payload}
   def handle_state_change(state),
     do: IO.puts("new state #{Crdtex.value(state)}")
 
   def handle_ring_change(nodes), do: IO.inspect(nodes)
 
-  # {:erlang.monotic_time(), :erlang.unique_integer([:monotonic]} might be needed
   defp dot() do
     try do
       :erlang.unique_integer([:monotonic, :positive]) # erlang 18 and up
