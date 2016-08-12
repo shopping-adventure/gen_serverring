@@ -1,23 +1,17 @@
 defmodule MonoCounterTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case
 
   setup_all do
     Application.start(:crdtex)
     File.mkdir("data")
 
-    on_exit fn() ->
-      Application.stop(:crdtex)
-    end
+    on_exit fn() -> Application.stop(:crdtex) end
 
     :ok
   end
 
   setup context do
-    Application.put_env(:gen_serverring, :name, context.name)
-    Application.put_env(:gen_serverring, :callback, context.callback)
-    Application.start(:gen_serverring)
-
-    on_exit fn -> Application.stop(:gen_serverring) end
+    GenServerring.start_link({context.name, context.callback})
 
     :ok
   end
@@ -121,7 +115,8 @@ defmodule MonoCounterTest do
 
     # adding a non existant node should trigger 2 ring_changes, the fantasy node
     # will be added to up_set and immediately after it will be detected as down
-    # require that ct is launched with --sname
+    # require that the test is launched with --sname
+    # Soooo: TODO find a way to run this test with a named node...
 
     GenServerring.add_node(name, :fantasy@localhost)
     assert_receive({:ring_changed, second_up_set})
