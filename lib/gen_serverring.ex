@@ -45,7 +45,7 @@ defmodule GenServerring do
     {:ok, ring} = get_ring(server)
     others = MapSet.delete(ring.up_set, n)
     Enum.each(others, fn(n) -> GenServer.stop({name, n}, reason, timeout) end)
-    Genserver.stop(server, reason, timeout)
+    GenServer.stop(server, reason, timeout)
   end
 
   def add_node(server, node) when is_binary(node),
@@ -288,7 +288,7 @@ defmodule GenServerring do
   end
 
   defp notify_node_set(set, set, _), do: :nothingtodo
-  defp notify_node_set(old_set, _, new_set),
+  defp notify_node_set(_, _, new_set),
     do: File.write!(ring_path, :erlang.term_to_binary(new_set))
 
   defp notify_payload(payload, payload, _), do: :no_payload_change
