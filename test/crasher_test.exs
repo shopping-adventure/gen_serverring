@@ -24,6 +24,6 @@ defmodule CrasherTest do
     :ct.sleep(18_000) # node 4 added to ring and 3 gossips occured
     Demo.get(ring)
     :ct.sleep(5_000)
-    :init.stop
+    :erlang.halt()
   end
 end

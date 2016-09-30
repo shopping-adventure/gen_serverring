@@ -178,8 +178,8 @@ defmodule GenServerring do
         true ->
           set = MapSet.delete(up_set, n)
           {:registered_name, name} = Process.info(self(), :registered_name)
-          ring.callback.handle_ring_change({MapSet.to_list(set), name,
-            :nodedown})
+          change = {MapSet.to_list(up_set), MapSet.to_list(set)}
+          ring.callback.handle_ring_change({change, name, :nodedown})
           set
         false -> up_set
       end
@@ -283,7 +283,8 @@ defmodule GenServerring do
     Enum.each(new_up, fn(n) -> Node.monitor(n, :true) end)
     new_set = MapSet.union(new_up, old_up)
     {:registered_name, name} = Process.info(self(), :registered_name)
-    callback.handle_ring_change({MapSet.to_list(new_set), name, :gossip})
+    change = {MapSet.to_list(old_up), MapSet.to_list(new_set)}
+    callback.handle_ring_change({change, name, :gossip})
     new_set
   end
 
