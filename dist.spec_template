@@ -2,7 +2,7 @@
 {logdir, all_nodes, "./ct_multi_logs"}.
 {logdir, master, "./ct_multi_logs"}.
 
-{init, [n1, n2, n3, n4],
+{init, [n1, n2, n3, n4, n5],
     {node_start, [
         {monitor_master, true},
         {boot_timeout, 10},
@@ -19,3 +19,4 @@
 {suites, [n2], "./test", reader_SUITE}.
 {suites, [n3], "./test", monitor_SUITE}.
 {suites, [n4], "./test", crasher_SUITE}.
+{suites, [n5], "./test", restart_SUITE}.
