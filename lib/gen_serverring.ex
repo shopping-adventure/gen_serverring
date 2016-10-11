@@ -22,9 +22,13 @@ defmodule GenServerring do
     case File.read(ring_path) do
       {:ok, bin} ->
         set = :erlang.binary_to_term(bin)
-        monitor(get_set(set))
+        up =
+          set
+          |> get_set
+          |> Enum.filter(Node.alive?)
+        monitor(up)
         # should we call callback.handle_ring_change in such a situation ?
-        {:ok, gen_ring(set, MapSet.new(get_set(set)), payload, 0, callback)}
+        {:ok, gen_ring(set, MapSet.new(up), payload, 0, callback)}
       _ ->
         set = Crdtex.Set.new
         {:ok, set} = add(set, {node(), 1}, node())
