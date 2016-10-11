@@ -25,7 +25,7 @@ defmodule GenServerring do
         up =
           set
           |> get_set
-          |> Enum.filter(Node.alive?)
+          |> Enum.filter(fn(n) -> Node.ping(n) == :pong end)
         monitor(up)
         changes = {[], up}
         :erlang.send_after(20, self(), {:ring_change, changes})
