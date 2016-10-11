@@ -27,7 +27,8 @@ defmodule GenServerring do
           |> get_set
           |> Enum.filter(Node.alive?)
         monitor(up)
-        # should we call callback.handle_ring_change in such a situation ?
+        changes = {[], up}
+        :erlang.send_after(20, self(), {:ring_change, changes})
         {:ok, gen_ring(set, MapSet.new(up), payload, 0, callback)}
       _ ->
         set = Crdtex.Set.new
@@ -165,7 +166,7 @@ defmodule GenServerring do
       active_nodes ->
         {:registered_name, name} = Process.info(self(), :registered_name)
         random_node =
-          Enum.at(active_nodes, :random.uniform(length(active_nodes)) - 1)
+          Enum.at(active_nodes, :rand.uniform(length(active_nodes)) - 1)
         GenServer.cast(
           {name, random_node},
           {:reconcile,
@@ -193,6 +194,10 @@ defmodule GenServerring do
     File.rm(ring_path)
     :init.stop()
     {:noreply, s}
+  end
+  def handle_info({:ring_change, changes}, ring) do
+    {:registered_name, name} = Process.info(self(), :registered_name)
+    ring.callback.handle_ring_change({changes, name, :init})
   end
   def handle_info(other, ring) do
     up_load = fn(load) -> update_payload(ring, load) end
