@@ -52,6 +52,9 @@ defmodule GenServerring do
     Enum.each(others, fn(n) -> GenServer.stop({name, n}, reason, timeout) end)
     GenServer.stop(server, reason, timeout)
   end
+  # useful to stop GenServerring on one node only
+  def local_stop(server, reason \\ :normal, timeout \\ :infinity),
+    do: GenServer.stop(server, reason, timeout)
 
   def add_node(server, node) when is_binary(node),
     do: add_node(server, :"#{node}")
