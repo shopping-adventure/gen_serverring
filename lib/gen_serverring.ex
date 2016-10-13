@@ -201,6 +201,7 @@ defmodule GenServerring do
   def handle_info({:ring_change, changes}, ring) do
     {:registered_name, name} = Process.info(self(), :registered_name)
     ring.callback.handle_ring_change({changes, name, :init})
+    {:noreply, ring}
   end
   def handle_info(other, ring) do
     up_load = fn(load) -> update_payload(ring, load) end
