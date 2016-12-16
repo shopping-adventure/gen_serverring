@@ -48,7 +48,7 @@ defmodule Demo do
       :erlang.unique_integer([:monotonic, :positive]) # erlang 18 and up
     rescue
       _ ->
-        {mega, second, micro} = :erlang.now()
+        {mega, second, micro} = :erlang.timestamp()
         (mega * 1_000_000 + second) * 1_000_000 + micro
     end
   end
