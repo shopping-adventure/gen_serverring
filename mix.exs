@@ -4,7 +4,7 @@ defmodule GenServerring.Mixfile do
   def project do
     [app: :gen_serverring,
      version: "0.1.3",
-     elixir: "~> 1.2",
+     elixir: "~> 1.3",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      deps: deps]
@@ -28,6 +28,6 @@ defmodule GenServerring.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    [{:crdtex, "0.0.1", git: "git://github.com/awetzel/crdtex"}]
+    [{:crdtex, git: "git://github.com/awetzel/crdtex"}]
   end
 end
